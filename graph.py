@@ -1,14 +1,13 @@
 import random as r
 import math
 import time
-import tsplib95
-
+import matplotlib.pyplot as plt
 
 
 def euclid(p, q):
     x = p[0] - q[0]
     y = p[1] - q[1]
-    return int(math.sqrt(x * x + y * y)+0.5)
+    return math.sqrt(x * x + y * y)
 
 
 class Graph:
@@ -27,7 +26,7 @@ class Graph:
             for lines in file.readlines():
                 self.n += 1
                 position = lines.strip().split()
-                pair = (int(float(position[0])), int(float(position[1])))
+                pair = (int((position[0])), int((position[1])))
                 pairs.append(pair)
 
             self.dist = [[0 for i in range(self.n)] for j in range(self.n)]
@@ -42,18 +41,6 @@ class Graph:
                 edge = lines.strip().split(" ")
                 self.dist[int(edge[0])][int(edge[1])] = int(edge[2])
                 self.dist[int(edge[1])][int(edge[0])] = int(edge[2])
-        elif n < -1:
-            problem = tsplib95.load(filename)
-            nodes = list(problem.get_nodes())
-            self.n = len(nodes)
-            pairs = []
-            for i in range(self.n):
-                coords = list(problem.node_coords[i+1])
-                pairs.append((int(coords[0]),int(coords[1])))
-            self.dist = [[0 for i in range(self.n)] for j in range(self.n)]
-            for k in range(self.n):
-                for l in range(self.n):
-                    self.dist[k][l] = euclid(pairs[k], pairs[l])
 
         self.perm = [i for i in range(self.n)]
 
@@ -75,7 +62,7 @@ class Graph:
         value_two = self.perm[(i + 1) % self.n]
         self.perm[i] = value_two
         self.perm[(i + 1) % self.n] = value_one
-        if (self.tourValue() < current_value):
+        if self.tourValue() < current_value:
             return True
         else:
             self.perm[i] = value_one
@@ -89,11 +76,11 @@ class Graph:
     # Return True/False depending on success.              
     def tryReverse(self, i, j):
         current_value = self.tourValue()
-        self.perm[i:j] = reversed(self.perm[i:j])
-        if (self.tourValue() < current_value):
+        self.perm[i:(j+1)] = reversed(self.perm[i:(j+1)])
+        if self.tourValue() < current_value:
             return True
         else:
-            self.perm[i:j] = reversed(self.perm[i:j])
+            self.perm[i:(j+1)] = reversed(self.perm[i:(j+1)])
             return False
 
     def swapHeuristic(self, k):
@@ -117,58 +104,11 @@ class Graph:
                     if self.tryReverse(i, j):
                         better = True
 
-    def twoopt(self, tour, k):
-        better = True
-        count = 0
-        while better and (count < k or k == -1):
-            better = False
-            count += 1
-            for j in range(2, self.n - 1):
-                for i in range(1, j):
-                    if self.tryReverse2(tour, i, j):
-                        better = True
-
-    def tryReverse2(self, tour, i, j):
-        current_value = self.fitness(tour)
-        tour[i:j] = reversed(tour[i:j])
-        if (self.fitness(tour) < current_value):
-            return True
-        else:
-            tour[i:j] = reversed(tour[i:j])
-            return False
-
-    def create_sample(self):
-        sample = []
-        for i in range(self.n - 1):
-            sample.append(i + 1)
-        return sample
-
-    def initialize_random_perm(self):
-        sample = self.create_sample()
-        perm = [0]
-        route = r.sample(sample, len(sample))
-        route = perm + route
-        return route
-
-    def create_population(self, population_size):
-        population = []
-        for i in range(population_size):
-            population.append(self.initialize_random_perm())
-        return population
-
-    def fitness(self, tour):
-        value = 0
-        for i in range(self.n):
-            value += self.dist[tour[i]][tour[(i + 1) % self.n]]
-        return value
-
-    def getTotalFitness(self, generation):
-        value = 0
-        for x in range(len(generation)):
-            value += self.fitness(generation[x])
-        return value
-
     def Greedy(self):
+        """
+        Used to construct a tour following a Greedy principle,
+        always choose as next node the one that is closer.
+        """
         new = self.perm[0]
         unused = self.perm[1:self.n][:]
         for i in range(1, self.n):
@@ -177,48 +117,133 @@ class Graph:
             unused.remove(closest)
             new = closest
 
-    def breed_2(self, parent_one, parent_two):
-        child = [0]
-        index_one = 1
-        index_two = 1
-        for i in range(self.n - 1):
-            try:
-                way_one = parent_one[index_one]
-                way_two = parent_two[index_two]
-                while (way_one in child):
-                    index_one += 1
-                    way_one = parent_one[index_one]
-                while (way_two in child):
-                    index_two += 1
-                    way_two = parent_two[index_two]
-                dist_one = self.dist[child[i]][way_one]
-                dist_two = self.dist[child[i]][way_two]
-                if (dist_two == 0 or dist_one == 0):
-                    print("hola")
-                weights = [1 / dist_one, 1 / dist_two]
-                choice = r.choices([way_one, way_two], weights=weights, k=1)[0]
-                if choice == way_one:
-                    index_one += 1
-                if choice == way_two:
-                    index_two += 1
-                child.append(choice)
-            except IndexError:
-                print("hola")
+    def twoopt(self, tour, k):
+        """
+        Repeated version of twoopt, which works in place for a given tour
+        """
+        better = True
+        count = 0
+        while better and (count < k or k == -1):
+            better = False
+            count += 1
+            for j in range(self.n - 1):
+                for i in range(j):
+                    if self.tryReverse2(tour, i, j):
+                        better = True
 
+    def tryReverse2(self, tour, i, j):
+        """
+        Repeated version of tryReverse, which works in place for a given tour
+        """
+        current_value = self.getTourValue(tour)
+        tour[i:(j+1)] = reversed(tour[i:(j+1)])
+        if self.getTourValue(tour) < current_value:
+            return True
+        else:
+            tour[i:(j+1)] = reversed(tour[i:(j+1)])
+            return False
+
+    def create_sample(self):
+        """
+        Function used to create the indentity permutation
+        """
+        sample = []
+        for i in range(self.n):
+            sample.append(i)
+        return sample
+
+    def initialize_random_perm(self):
+        """
+        Function used to generate a random valid tour.
+        """
+        sample = self.create_sample()
+        route = r.sample(sample, len(sample))
+        return route
+
+    def create_population(self, population_size):
+        """
+        Function used to generate an array of random valid tours.
+        """
+        population = []
+        for i in range(population_size):
+            population.append(self.initialize_random_perm())
+        return population
+
+    def getTourValue(self, tour):
+        """
+        Function used to get the value of a given tour
+        :return:
+        """
+        value = 0
+        for i in range(self.n):
+            value += self.dist[tour[i]][tour[(i + 1) % self.n]]
+        return value
+
+    def fitness(self, tour):
+        """
+        Function used to get the fitness of a tour,
+        which has to be inversely proportional (in this case 1/x^2) to the value of the tour"
+        """
+
+        value = 0
+        for i in range(self.n):
+            value += self.dist[tour[i]][tour[(i + 1) % self.n]]
+        return 1 / self.getTourValue(tour) ** 2
+
+    def Greedy_Crossover(self, parent_one, parent_two):
+        """
+        Function used to generate an offspring from two parents
+        :return:
+        """
+        choice = r.choices([parent_one[0], parent_two[0]], k=1)[0]
+        index_one = 0
+        index_two = 0
+        child = [choice]
+        if choice == parent_one[0]:
+            index_one = 1
+        if choice == parent_two[0]:
+            index_two = 1
+        for i in range(self.n - 1):
+            way_one = parent_one[index_one]
+            way_two = parent_two[index_two]
+            while (way_one in child):
+                index_one += 1
+                way_one = parent_one[index_one]
+            while (way_two in child):
+                index_two += 1
+                way_two = parent_two[index_two]
+            dist_one = self.dist[child[i]][way_one]
+            dist_two = self.dist[child[i]][way_two]
+            weights = [1 / dist_one, 1 / dist_two]
+            choice = r.choices([way_one, way_two], weights=weights, k=1)[0]
+            if choice == way_one:
+                index_one += 1
+            if choice == way_two:
+                index_two += 1
+            child.append(choice)
         return child
 
-    def mutate_2(self, generation, mutate_parameter):
+    def mutate_population(self, generation, mutate_parameter):
+        """
+        Function used to mutate population
+        """
 
         mutatedPop = [self.mutate_individual(individual, mutate_parameter) for individual in generation]
         return mutatedPop
 
     def rankGeneration(self, generation):
-        gen = [(tour, 1 / self.fitness(tour)) for tour in generation]
+        """
+        Function used to rank a generation according to the fitness of each tour
+        """
+        gen = [(tour, self.fitness(tour)) for tour in generation]
         ordered = sorted(gen, key=lambda data: 1 / data[1])
         tours_ordered, probabilites = zip(*ordered)
         return tours_ordered, probabilites
 
-    def NewGeneration(self, currentGeneration, eliteSize, mutation_rate, k, modified):
+    def Breed(self, currentGeneration, eliteSize, mutation_rate, k, modified):
+        """
+        Function used to generate the next generation
+        """
         currentGeneration, probalities = self.rankGeneration(currentGeneration)
         newGeneration = []
         for i in range(eliteSize):
@@ -227,96 +252,54 @@ class Graph:
         children = []
         for j in range(length):
             parents = r.choices(currentGeneration, weights=probalities, k=2)
-            child_one = self.breed_2(parents[0], parents[1])
+            child_one = self.Greedy_Crossover(parents[0], parents[1])
             children.append(child_one)
 
-        children = self.mutate_2(children, mutation_rate)
+        children = self.mutate_population(children, mutation_rate)
         choices = r.choices(children, k=modified)
         for i in range(len(choices)):
             self.twoopt(choices[i], k)
-
         newGeneration += children
         return newGeneration
 
-    def breed(self, parent_one, parent_two):
-        cut = r.randint(1, len(parent_one) - 1)
-        start = parent_one[:cut]
-        end = [item for item in parent_two if item not in start]
-        start.extend(end)
-        return start
-
-    def genetic_2(self, PopulationSize, mutate_parameter, generationLimit, eliteSize, k, percentage):
+    def genetic(self, PopulationSize, mutate_parameter, generationLimit, eliteSize, k, percentage):
+        """
+        Function used to run the genetic algorithm all together.
+        """
+        best_values = []
         modified = int(percentage * (PopulationSize - eliteSize))
         update = 0
         population = self.create_population(PopulationSize)
+        population = sorted(population, key=lambda t: self.getTourValue(t))
+        best = self.getTourValue(population[0])
+        self.perm = population[0][:]
+        best_values.append(best)
         for i in range(generationLimit):
-            population = self.NewGeneration(population, eliteSize, mutate_parameter, k, modified)
-            best = self.tourValue()
-            for individual in population:
-                if best > self.fitness(individual):
-                    self.perm = individual[:]
+            population = self.Breed(population, eliteSize, mutate_parameter, k, modified)
+            population = sorted(population, key=lambda t: self.getTourValue(t))
+            new_best_route = population[0]
+            new_best = self.getTourValue(population[0])
+            best_values.append(new_best)
+            if best > new_best:
+                self.perm = new_best_route[:]
             update += 1
-            print(update)
+        return best_values
+
+    def sortRoutes(self, population):
+        """
+        Function used to sort the routes in ascending order of tour value
+        """
+        return sorted(population, key=lambda t: self.getTourValue(t))
 
     def mutate_individual(self, individual, mutationRate):
-        for swapped in range(1, len(individual)):
-            if (r.random() <= mutationRate):
-                swapWith = r.randint(1, len(individual) - 1)
+        """
+        Function used to mutate and individual of a population
+        """
+        for swapped in range(len(individual)):
+            if r.random() <= mutationRate:
+                swapWith = r.randint(0, len(individual) - 1)
                 city1 = individual[swapped]
                 city2 = individual[swapWith]
                 individual[swapped] = city2
                 individual[swapWith] = city1
         return individual
-
-def readPath(filename):
-    file = open(filename,"r")
-    perm = []
-    for f in file.readlines():
-        perm.append(int(f)-1)
-    return perm
-
-def main():
-    b = Graph(-1,"oliver30")
-    print(b.n)
-    b.swapHeuristic(1000)
-    b.TwoOptHeuristic(1000)
-    print(b.perm)
-    print(b.tourValue())
-    b.perm = [i for i in range(30)]
-
-    a = Graph(-1, "oliver30")
-    a.Greedy()
-    print(a.tourValue())
-    # print(a.tourValue())
-    """
-    print(a.tourValue())
-    a.swapHeuristic(12)
-    print(a.tourValue())
-    a.TwoOptHeuristic(12)
-    print(a.tourValue())
-    pop = a.create_population(10)
-    newGen = a.NewGeneration(pop,3)
-    newNew = a.NewGeneration(newGen,3)
-    """
-    start = time.time()
-    """for i in range(10):
-        a.perm = identity
-        a.genetic_2(600,0.1,100,60)
-        values.append(a.tourValue())
-    """
-    identity = [i for i in range(a.n)]
-    a.perm = identity
-    a.genetic_2(100, 0.05, 100, 10, 10,0.3)
-    end = time.time()
-    print(end - start)
-    print(a.perm)
-    print(a.tourValue())
-    l = [x+1 for x in a.perm]
-    l = [1,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,25,24,26,27,28,29,30,2]
-    a.perm = [x-1 for x in l]
-    print(a.tourValue())
-
-
-
-
-main()
