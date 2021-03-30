@@ -18,3 +18,9 @@ are taken to the next one and there is still room for variability due to mutatio
 converges into a local minimum). The hybrid part of the algorithm comes from the fact that usually traditional GA
 take a high number of generations to converge into an optimal solution. Therefore, 2-opt heuristic was implemented
 inside the genetic algorithm to make the algorithm converge faster
+## Methods
+1. Elitism 
+2. Roulete Wheel Selection
+3. Modified Greedy Crossover Operator
+4. Simple Swap Mutation Opertor
+5. 2-Opt Local Search
