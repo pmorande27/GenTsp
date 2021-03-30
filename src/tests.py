@@ -230,7 +230,7 @@ def setUp():
 
     filenames = ["oliver30", "att48", "st70", "pr76", "kroD100", "lin105", "xqf131"]
     paths = ["oliver30path", "att48path", "st70path", "pr76path", "kroD100path", "lin105path", "xqf131path"]
-    test = open("test", "r")
+    test = open("test_files/test", "r")
     fileslines = []
     file = []
     for line in test.readlines():
@@ -252,7 +252,7 @@ def setUp():
             else:
                 tempFile.write(line)
         tempFile.close()
-    path = open("path","r")
+    path = open("test_files/path","r")
     pathfiles = []
     pathing = []
     for p in path.readlines():
